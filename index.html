@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>APFIL Tapeline — Production Performance / OEE Loss Diagnostic</title>
+<style>
+  :root{
+    --teal:#0f5c56; --teal2:#0b7a6f; --green:#2e7d32; --red:#c62828; --amber:#f9a825;
+    --ink:#12211f; --muted:#5d6b69; --line:#e2e8e7; --bg:#eef2f1; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Arial,Helvetica,sans-serif;font-size:13px}
+  .wrap{max-width:1080px;margin:0 auto;padding:14px 16px 40px}
+  header.top{background:linear-gradient(90deg,#0f5c56,#0b7a6f);color:#fff;border-radius:10px 10px 0 0;padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  header.top .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:44px;height:44px;border:2px solid #bff3ea;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#bff3ea;font-size:20px}
+  header.top h1{margin:0;font-size:22px;letter-spacing:.5px;font-weight:800}
+  header.top .sub{font-size:12px;opacity:.9;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+  .pill{background:#0a3f3a;border-radius:8px;padding:8px 12px;text-align:right;font-size:11px;line-height:1.5}
+  .pill b{font-size:13px;display:block;color:#bff3ea}
+  .ribbon{background:#fff;border:1px solid var(--line);border-top:0;padding:10px 18px;display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);letter-spacing:.4px}
+  .ribbon b{color:var(--teal)}
+  .periodbar{background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;padding:10px 18px;display:flex;gap:8px;align-items:center}
+  .periodbar button{border:1px solid var(--line);background:#fff;color:var(--teal);font-weight:700;font-size:12px;padding:8px 18px;border-radius:8px;cursor:pointer;letter-spacing:.3px}
+  .periodbar button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .periodbar .hint{margin-left:auto;font-size:11px;color:var(--muted)}
+  h2.sec{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--teal);margin:18px 0 8px;border-bottom:2px solid #cfe3df;padding-bottom:5px}
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1.1fr 1fr 1fr}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .card h3{margin:0 0 8px;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .kpi .lab{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .kpi .val{font-size:34px;font-weight:800;line-height:1.05;margin:2px 0}
+  .kpi .tgt{font-size:11px;color:var(--muted)}
+  .vs{font-size:12px;font-weight:700;margin-top:4px}
+  .down{color:var(--red)} .up{color:var(--green)}
+  .bar{height:9px;border-radius:5px;background:#eceff0;overflow:hidden;margin-top:8px}
+  .bar > i{display:block;height:100%;border-radius:5px}
+  .muted{color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;letter-spacing:.4px}
+  .t-red{background:#fdecea;color:var(--red)} .t-amber{background:#fff5e0;color:#b26a00} .t-green{background:#e7f4e8;color:var(--green)}
+  .donut{width:132px;height:132px;border-radius:50%;background:conic-gradient(var(--green) 0 69.4%, var(--red) 69.4% 100%);display:flex;align-items:center;justify-content:center;margin:0 auto}
+  .donut .hole{width:92px;height:92px;background:#fff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .hole b{font-size:20px}
+  .legend{display:flex;gap:14px;justify-content:center;font-size:11.5px;margin-top:10px;flex-wrap:wrap}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .step{border:1px solid var(--line);border-radius:10px;padding:10px;position:relative;background:#fbfdfc}
+  .step .n{position:absolute;top:8px;right:10px;font-size:22px;font-weight:800;color:#d5e5e2}
+  .step h4{margin:0 0 4px;font-size:12px;color:var(--teal);text-transform:uppercase;letter-spacing:.6px}
+  .step p{margin:0;font-size:11.5px;color:var(--muted)}
+  .focus li{margin:5px 0;font-size:12px}
+  footer{margin-top:18px;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .barlist .bl{display:grid;grid-template-columns:190px 1fr 54px;gap:8px;align-items:center;margin:6px 0;font-size:11.5px}
+  .barlist .bl .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{background:#f0f3f3;border-radius:5px;height:14px;overflow:hidden;display:block}
+  .track > i{display:block;height:100%}
+  .bl .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+  @media print{body{background:#fff} .card{break-inside:avoid} .periodbar button{cursor:default}}
+  @media (max-width:820px){.g4,.g3,.g2{grid-template-columns:1fr 1fr}.flow{grid-template-columns:1fr 1fr}.barlist .bl{grid-template-columns:130px 1fr 44px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">G</div>
+      <div>
+        <div class="sub">Akij · APFIL — Tape Line</div>
+        <h1>Production Performance · OEE Loss Diagnostic</h1>
+        <div class="sub" style="text-transform:none;letter-spacing:.3px">Find the constraint. Quantify the loss. Improve the shift.</div>
+      </div>
+    </div>
+    <div class="pill">IMPROVE&nbsp;|&nbsp;DIGITIZE&nbsp;|&nbsp;PREDICT&nbsp;|&nbsp;OPTIMIZE<br>Daily OEE — Gemba walk</div>
+  </header>
+
+  <div class="ribbon">
+    <span><b>Reporting</b> 12-Oct-2026 (last day) &amp; 01–12 Oct 2026 (MTD)</span>
+    <span><b>Scope</b> Unit-1 &amp; Unit-2 Tapeline · Shifts A–C</span>
+    <span><b>Targets</b> A 90% · P 86% · Q 97% · OEE 75% (management target)</span>
+    <span><b>Source</b> Production Report + Tapeline Breakdown</span>
+  </div>
+
+  <div class="periodbar">
+    <button id="btnDay" class="active" onclick="renderPeriod('day')">Last day · 12-Oct-2026</button>
+    <button id="btnMtd" onclick="renderPeriod('mtd')">Month to date · Oct 2026</button>
+    <span class="hint" id="basisHint">Basis: single day (shifts A–D)</span>
+  </div>
+
+  <!-- KPI CARDS -->
+  <h2 class="sec" id="kpiTitle">CURRENT SCENARIO — OEE (11-OCT-2026)</h2>
+  <div class="grid g4">
+    <div class="card kpi">
+      <div class="lab">Availability</div>
+      <div class="val" id="kA">69.4%</div>
+      <div class="tgt" id="kAt">vs 90% target</div>
+      <div class="vs" id="kAd">▼ 20.6 pts</div>
+      <div class="bar"><i id="kAb" style="width:69.4%"></i></div>
+    </div>
+    <div class="card kpi">
+      <div class="lab">Performance</div>
+      <div class="val" id="kP">84.8%</div>
+      <div class="tgt" id="kPt">vs 86% target</div>
+      <div class="vs up" id="kPd">▲ 3.4 pts</div>
+      <div class="bar"><i id="kPb" style="width:84.8%"></i></div>
+    </div>
+    <div class="card kpi">
+      <div class="lab">Quality</div>
+      <div class="val" id="kQ">97.1%</div>
+      <div class="tgt" id="kQt">vs 97% target</div>
+      <div class="vs up" id="kQd">▲ 0.0 pts</div>
+      <div class="bar"><i id="kQb" style="width:97.1%"></i></div>
+    </div>
+    <div class="card kpi">
+      <div class="lab">Overall OEE</div>
+      <div class="val" id="kO" style="color:var(--red)">57.2%</div>
+      <div class="tgt" id="kOt">vs 75% target</div>
+      <div class="vs up" id="kOd">▲ 1.7 pts</div>
+      <div class="bar"><i id="kOb" style="width:57.2%;background:var(--red)"></i></div>
+    </div>
+  </div>
+
+  <!-- WHERE TIME GOING + MILL + BOTTLENECK -->
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card">
+      <h3 id="timeTitle">Where is time going? — 11-Oct</h3>
+      <div class="donut" id="donut"><div class="hole"><b id="donutC">1,440</b><span class="muted" style="font-size:10px">planned prod. min</span></div></div>
+      <div class="legend" id="donutL"></div>
+      <p class="muted" style="margin:10px 0 0;font-size:11px" id="timeNote"></p>
+    </div>
+    <div class="card">
+      <h3 id="millsTitle">OEE by mill — 11-Oct</h3>
+      <div id="millBoard"></div>
+    </div>
+    <div class="card">
+      <h3 id="factorsTitle">Find the bottleneck — 11-Oct</h3>
+      <div id="factors"></div>
+    </div>
+  </div>
+
+  <!-- TOP LOSSES -->
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card">
+      <h3 id="lossTitle">Top production losses — 11-Oct (min)</h3>
+      <div class="barlist" id="losses"></div>
+      <p class="muted" style="margin:8px 0 0;font-size:11px" id="lossNote"></p>
+    </div>
+    <div class="card">
+      <h3 id="catTitle">Loss by category — 11-Oct (min)</h3>
+      <div class="barlist" id="cats"></div>
+      <p class="muted" style="margin:8px 0 0;font-size:11px" id="catNote"></p>
+    </div>
+  </div>
+
+  <!-- OPPORTUNITY LOSS -->
+  <h2 class="sec" id="oppTitle">Opportunity Loss — downtime (NPT) time</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Unit</th><th class="num">NPT (min)</th><th class="num">Cycle time (min/KG)</th><th class="num">Lost output (KG)</th></tr></thead>
+      <tbody id="oppBody"></tbody>
+    </table>
+    <p class="muted" style="margin:8px 0 0;font-size:11px" id="oppNote"></p>
+  </div>
+
+  <!-- TREND -->
+  <h2 class="sec">Production &amp; OEE Trend — last 16 days (context)</h2>
+  <div class="card">
+    <div id="trend"></div>
+  </div>
+
+  <!-- SHIFT ACTION BOARD / NPT REASONS -->
+  <h2 class="sec" id="boardTitle">Shift Action Board — NPT reasons to work on</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Priority · downtime reason</th><th class="num">Time (min)</th><th>Unit</th><th>Next action</th><th>Responsible team</th></tr></thead>
+      <tbody id="boardBody"></tbody>
+    </table>
+    <p class="muted" style="margin:8px 0 0;font-size:11px" id="boardNote"></p>
+  </div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card">
+      <h3 id="shiftTitle">Shift OEE — 11-Oct</h3>
+      <div id="shifts"></div>
+    </div>
+    <div class="card">
+      <h3>Gemba walk — where to work</h3>
+      <ul class="focus">
+        <li><b>Tape-line floor (Unit-1 &amp; Unit-2)</b> — tape cutting, winder, stretching unit.</li>
+        <li><b>Electrical room</b> — REB breakdown / insufficient electric load.</li>
+        <li><b>Changeover area</b> — QCO reduction (SMED).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FLOW -->
+  <h2 class="sec">Find → Quantify → Act → Sustain</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><h4>Find</h4><p>Availability 55.5% (day) is the constraint — walk the tape-line floor next shift.</p></div>
+    <div class="step"><div class="n">2</div><h4>Quantify</h4><p id="quant"></p></div>
+    <div class="step"><div class="n">3</div><h4>Act</h4><p>REB supply reliability, QCO/SMED, stretching-unit &amp; winder PM.</p></div>
+    <div class="step"><div class="n">4</div><h4>Sustain</h4><p>Daily OEE board, standard work, 5S at mill floor, weekly loss-review with owners.</p></div>
+  </div>
+
+  <footer>
+    <span>Source: APFIL Tapeline <i>Production Report</i> &amp; <i>Tapeline Breakdown</i> · Data through 12-Oct-2026 · Generated 13-Oct-2026</span>
+    <span>OEE = Availability × Performance × Quality · OEE target = 75% (management target)</span>
+  </footer>
+</div>
+
+<script>
+const DATA = {
+  day: {
+    basis:'Basis: single day — 12-Oct-2026 (shifts A, C)',
+    kpiTitle:'CURRENT SCENARIO — OEE (12-OCT-2026)',
+    kpi:{A:55.5,P:74.0,Q:97.9,OEE:40.2}, targets:{A:90,P:86,Q:97,OEE:75},
+    timeTitle:'Where is time going? — 12-Oct',
+    time:{planned:1440, avail:799, down:641, availPct:55.5, downPct:44.5,
+      note:'641 min unplanned (NPT); no planned downtime.'},
+    millsTitle:'OEE by unit — 12-Oct',
+    mills:[
+      {n:'Unit-1 Tapeline',v:34.4,A:58.2,P:60.6,Q:97.5,out:2435,target:6883},
+      {n:'Unit-2 Tapeline',v:51.7,A:50.0,P:105.2,Q:98.3,out:2302,target:4463}],
+    factorsTitle:'Find the bottleneck — 12-Oct',
+    factors:[{n:'Availability',v:55.5,t:90},{n:'Performance',v:74.0,t:86},{n:'Quality',v:97.9,t:97}],
+    lossTitle:'Top downtime — 12-Oct (min)',
+    losses:[{n:'U01- REB Breakdown',v:641}],
+    lossNote:'Breakdown tab: REB Breakdown 641 min (Utility-Electricity). No planned downtime.',
+    catTitle:'Downtime by category — 12-Oct (min)',
+    cats:[{n:'Utility (Electricity)',v:641}],
+    catNote:'All 641 min unplanned (REB). No planned downtime.',
+    boardTitle:'Shift Action Board — downtime reasons (12-Oct)',
+    boardNote:'Total unplanned NPT (12-Oct) = 641 min.',
+    board:[
+      {p:'P1',pcls:'t-red',reason:'REB Breakdown',sub:'· U01 · Utility (Electricity)',min:641,mill:'Both',action:'REB supply reliability; auto-changeover / captive power; power-quality plan.',team:'Electrical / Utility (REB)',tcls:'t-red'}
+    ],
+    shiftTitle:'Shift OEE — 12-Oct',
+    shifts:[
+      {n:'Shift A',v:35.2,A:16.5,P:216.2,Q:98.9,Out:1225},
+      {n:'Shift C',v:42.7,A:75.0,P:58.4,Q:97.5,Out:3512}],
+    quant:'641 min unplanned (NPT) on 12-Oct (REB breakdown). Best shift C (42.7%); Availability 55.5% is the constraint.',
+    opp:{ rows:[{mill:'Unit-1 Tapeline',min:401,cyc:0.139,mt:2885},{mill:'Unit-2 Tapeline',min:240,cyc:0.11,mt:2286}],
+      totalMin:641, totalMT:5171, plannedMin:0, plannedMT:0,
+      note:'Opportunity loss = NPT min ÷ ideal cycle time (avg min/KG) → <b>~5,171 KG</b> lost on 12-Oct.' }
+  },
+  mtd: {
+    basis:'Basis: 01–12 Oct 2026 month-to-date (shifts A–C)',
+    kpiTitle:'CURRENT SCENARIO — OEE (OCT 2026 MTD)',
+    kpi:{A:95.0,P:86.0,Q:98.1,OEE:80.2}, targets:{A:90,P:86,Q:97,OEE:75},
+    timeTitle:'Where is time going? — Oct MTD',
+    time:{planned:32269, avail:30666, down:1603, availPct:95.0, downPct:5.0,
+      note:'1,603 min unplanned (NPT); no planned downtime.'},
+    millsTitle:'OEE by unit — Oct MTD',
+    mills:[
+      {n:'Unit-1 Tapeline',v:77.5,A:94.6,P:84.2,Q:97.3,out:91742,target:115486},
+      {n:'Unit-2 Tapeline',v:82.8,A:95.5,P:87.8,Q:98.8,out:117165,target:138720}],
+    factorsTitle:'Find the bottleneck — Oct MTD',
+    factors:[{n:'Availability',v:95.0,t:90},{n:'Performance',v:86.0,t:86},{n:'Quality',v:98.1,t:97}],
+    lossTitle:'Top downtime — Oct MTD (min)',
+    losses:[{n:'Quick Change Over (QCO)',v:962},{n:'U01- REB Breakdown',v:641}],
+    lossNote:'From Production Report NPT categories — the Breakdown tab only recorded 12-Oct in October.',
+    catTitle:'Downtime by category — Oct MTD (min)',
+    cats:[{n:'Quick Change Over',v:962},{n:'Utility (Electricity)',v:641}],
+    catNote:'No planned downtime recorded.',
+    boardTitle:'Shift Action Board — downtime reasons (Oct MTD)',
+    boardNote:'Total unplanned NPT (Oct MTD) = 1,603 min (Breakdown tab only covers 12-Oct).',
+    board:[
+      {p:'P1',pcls:'t-red',reason:'Quick Change Over (QCO)',sub:'· QCO',min:962,mill:'Both',action:'Reduce changeover time; SMED; quick-change tooling; standard work.',team:'Production / Process',tcls:'t-red'},
+      {p:'P2',pcls:'t-amber',reason:'REB Breakdown',sub:'· U01 · Utility (Electricity)',min:641,mill:'Both',action:'REB supply reliability; auto-changeover / captive power; power-quality plan.',team:'Electrical / Utility (REB)',tcls:'t-amber'}
+    ],
+    shiftTitle:'Shift OEE — Oct MTD',
+    shifts:[
+      {n:'Shift A',v:85.1,A:93.0,P:93.2,Q:98.2,Out:66050},
+      {n:'Shift B',v:73.6,A:98.1,P:76.8,Q:97.7,Out:65364},
+      {n:'Shift C',v:82.3,A:93.8,P:89.3,Q:98.4,Out:77493}],
+    quant:'1,603 min unplanned (NPT) this month (QCO 962 + REB 641). Best shift A (85.1%); Performance 86.0%.',
+    opp:{ rows:[{mill:'Unit-1 Tapeline',min:895,cyc:0.143,mt:6382},{mill:'Unit-2 Tapeline',min:708,cyc:0.113,mt:6323}],
+      totalMin:1603, totalMT:12705, plannedMin:0, plannedMT:0,
+      note:'Opportunity loss = NPT min ÷ ideal cycle time (avg min/KG) → <b>~12,705 KG</b> lost this month.' }
+  }
+};
+
+const TARGET = 75;
+const TREND = {
+  labels:['27 Sep','28 Sep','29 Sep','30 Sep','01 Oct','02 Oct','03 Oct','04 Oct','05 Oct','06 Oct','07 Oct','08 Oct','09 Oct','10 Oct','11 Oct','12 Oct'],
+  out:[17341,20891,20270,17851,18106,18013,16417,21855,20844,16799,18228,19624,20789,17149,16346,4737],
+  oee:[90.5,92.6,90.4,83.7,77.6,90.2,71.2,94.3,90.1,70.9,79.9,83.2,90.5,89.9,67.9,40.2]
+};
+
+function color(v){ if(v>=TARGET) return '#2e7d32'; if(v>=TARGET-15) return '#f9a825'; return '#c62828'; }
+function gapColor(gap){ if(gap<=2) return '#2e7d32'; if(gap<=10) return '#f9a825'; return '#c62828'; }
+
+function barList(id, arr){
+  const max = Math.max(1, ...arr.map(a=>a.v));
+  document.getElementById(id).innerHTML = arr.map(a=>`<div class="bl">
+      <span class="nm" title="${a.n}">${a.n}</span>
+      <span class="track"><i style="width:${(a.v/max*100).toFixed(1)}%;background:#0b7a6f"></i></span>
+      <span class="v">${a.v.toLocaleString()}</span></div>`).join('');
+}
+function millBoard(arr){
+  document.getElementById('millBoard').innerHTML = arr.map(s=>{
+    const c = color(s.v), w = Math.max(0, Math.min(100, s.v));
+    const ach = s.target>0 ? (s.out/s.target*100) : 0;
+    return `<div style="margin:9px 0">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-weight:700;font-size:12.5px">${s.n}</span>
+        <span style="font-weight:800;font-size:15px;color:${c}">${s.v.toFixed(1)}%</span></div>
+      <span class="track" style="position:relative;margin:4px 0 3px;height:12px">
+        <i style="width:${w}%;background:${c}"></i>
+        <span style="position:absolute;left:${TARGET}%;top:-3px;bottom:-3px;width:2px;background:#333;opacity:.55"></span></span>
+      <div class="muted" style="font-size:10.5px">A ${s.A}% · P ${s.P}% · Q ${s.Q}% · Out ${s.out.toLocaleString()}/${s.target.toLocaleString()} KG (${ach.toFixed(0)}%)</div>
+    </div>`;}).join('') + `<div class="muted" style="font-size:10.5px;margin-top:8px;border-top:1px solid #e2e8e7;padding-top:6px">▏black line = 75% OEE target</div>`;
+}
+function factorBoard(arr){
+  let worst=arr[0], worstGap=-999;
+  const rows = arr.map(s=>{
+    const gap = s.t - s.v; if(gap>worstGap){worstGap=gap; worst=s;}
+    const c = gap<=2 ? '#2e7d32' : (gap<=10 ? '#f9a825' : '#c62828');
+    const gapTxt = Math.abs(gap)<0.05 ? 'on target' : (gap>0 ? ('gap −'+gap.toFixed(1)+' pts') : ('ahead +'+(-gap).toFixed(1)+' pts'));
+    return `<div style="margin:9px 0">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-weight:700;font-size:12.5px">${s.n}</span>
+        <span style="font-weight:800;font-size:15px;color:${c}">${s.v.toFixed(1)}%</span></div>
+      <span class="track" style="position:relative;margin:4px 0 3px;height:12px">
+        <i style="width:${Math.max(0,Math.min(100,s.v))}%;background:${c}"></i>
+        <span style="position:absolute;left:${s.t}%;top:-3px;bottom:-3px;width:2px;background:#333;opacity:.55"></span></span>
+      <div class="muted" style="font-size:10.5px">target ${s.t}% · ${gapTxt}</div>
+    </div>`;}).join('');
+  const note = worstGap>=0
+    ? `▏constraint = <b style="color:#c62828">${worst.n}</b> (−${worstGap.toFixed(1)} pts below target)`
+    : `▏all factors at/above target`;
+  document.getElementById('factors').innerHTML = rows +
+    `<div class="muted" style="font-size:10.5px;margin-top:8px;border-top:1px solid #e2e8e7;padding-top:6px">${note}</div>`;
+}
+function shiftBoard(arr){
+  const best = arr.reduce((a,b)=>b.v>a.v?b:a);
+  document.getElementById('shifts').innerHTML = arr.map(s=>{
+    const c = color(s.v), w = Math.max(0, Math.min(100, s.v));
+    return `<div style="margin:9px 0">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-weight:700;font-size:12.5px">${s.n}</span>
+        <span style="font-weight:800;font-size:15px;color:${c}">${s.v.toFixed(1)}%</span></div>
+      <span class="track" style="position:relative;margin:4px 0 3px;height:12px">
+        <i style="width:${w}%;background:${c}"></i>
+        <span style="position:absolute;left:${TARGET}%;top:-3px;bottom:-3px;width:2px;background:#333;opacity:.55"></span></span>
+      <div class="muted" style="font-size:10.5px">A ${s.A}% · P ${s.P}% · Q ${s.Q}% · Out ${s.Out.toLocaleString()} KG</div>
+    </div>`;}).join('') + `<div class="muted" style="font-size:10.5px;margin-top:8px;border-top:1px solid #e2e8e7;padding-top:6px">▏black line = 75% OEE target · best shift: <b style="color:#2e7d32">${best.n}</b> (${best.v.toFixed(1)}%)</div>`;
+}
+function oppCard(o){
+  const f = n => Math.round(n).toLocaleString();
+  let rows = o.rows.map(r=>`<tr><td>${r.mill}</td><td class="num">${r.min.toLocaleString()}</td><td class="num">${r.cyc}</td><td class="num">${f(r.mt)}</td></tr>`).join('');
+  rows += `<tr style="font-weight:700;background:#eef7f5"><td>Total — unplanned (NPT)</td><td class="num">${o.totalMin.toLocaleString()}</td><td class="num">—</td><td class="num">${f(o.totalMT)}</td></tr>`;
+  if(o.plannedMin>0){ rows += `<tr style="background:#fff8e6"><td>Planned maintenance</td><td class="num">${o.plannedMin.toLocaleString()}</td><td class="num">—</td><td class="num">${f(o.plannedMT)}</td></tr>`; }
+  document.getElementById('oppBody').innerHTML = rows;
+  document.getElementById('oppNote').innerHTML = o.note +
+    ' Value = lost MT × contribution margin/MT — <span class="muted">set your margin to show BDT.</span>';
+}
+function boardTable(rows){
+  if(!rows || rows.length===0){
+    document.getElementById('boardBody').innerHTML =
+      `<tr><td colspan="5" class="muted" style="padding:12px 8px">No NPT / breakdown events recorded for this day yet (data partial).</td></tr>`;
+    return;
+  }
+  document.getElementById('boardBody').innerHTML = rows.map(r=>`<tr${r.planned?' style="background:#fff8e6"':''}>
+      <td><span class="tag ${r.pcls}">${r.p}</span> ${r.reason} <span class="muted">${r.sub}</span></td>
+      <td class="num"><b>${r.min.toLocaleString()}</b></td><td>${r.mill}</td><td>${r.action}</td>
+      <td><span class="tag ${r.tcls}">${r.team}</span></td></tr>`).join('');
+}
+function setKpi(id, key, val, target){
+  const gap = target - val;
+  document.getElementById('k'+id).textContent = val.toFixed(1)+'%';
+  document.getElementById('k'+id+'t').textContent = 'vs '+target+'% target';
+  const d = document.getElementById('k'+id+'d');
+  d.textContent = (gap<=0?'▲ ':'▼ ')+Math.abs(gap).toFixed(1)+' pts';
+  d.className = 'vs '+(gap<=0?'up':'down');
+  const b = document.getElementById('k'+id+'b');
+  b.style.width = Math.max(0,Math.min(100,val))+'%';
+  b.style.background = gapColor(gap);
+}
+function renderPeriod(key){
+  const p = DATA[key];
+  document.getElementById('btnDay').classList.toggle('active', key==='day');
+  document.getElementById('btnMtd').classList.toggle('active', key==='mtd');
+  document.getElementById('basisHint').textContent = p.basis;
+  document.getElementById('kpiTitle').textContent = p.kpiTitle;
+  setKpi('A','A',p.kpi.A,p.targets.A);
+  setKpi('P','P',p.kpi.P,p.targets.P);
+  setKpi('Q','Q',p.kpi.Q,p.targets.Q);
+  const onee = document.getElementById('kO');
+  onee.textContent = p.kpi.OEE.toFixed(1)+'%';
+  const ogap = p.targets.OEE - p.kpi.OEE;
+  onee.style.color = ogap<=0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('kOt').textContent = 'vs '+p.targets.OEE+'% target';
+  const oel = document.getElementById('kOd');
+  oel.textContent = (ogap<=0?'▲ ':'▼ ')+Math.abs(ogap).toFixed(1)+' pts';
+  oel.className = 'vs '+(ogap<=0?'up':'down');
+  document.getElementById('kOb').style.width = Math.max(0,Math.min(100,p.kpi.OEE))+'%';
+  document.getElementById('kOb').style.background = ogap<=0 ? 'var(--green)' : 'var(--red)';
+  // time
+  document.getElementById('timeTitle').textContent = p.timeTitle;
+  document.getElementById('donut').style.background = `conic-gradient(var(--green) 0 ${p.time.availPct}%, var(--red) ${p.time.availPct}% 100%)`;
+  document.getElementById('donutC').textContent = p.time.planned.toLocaleString();
+  document.getElementById('donutL').innerHTML =
+    `<span><i class="dot" style="background:var(--green)"></i>Available ${p.time.avail.toLocaleString()} min (${p.time.availPct}%)</span>`+
+    `<span><i class="dot" style="background:var(--red)"></i>Down ${p.time.down.toLocaleString()} min (${p.time.downPct}%)</span>`;
+  document.getElementById('timeNote').textContent = p.time.note;
+  // titles
+  document.getElementById('millsTitle').textContent = p.millsTitle;
+  document.getElementById('factorsTitle').textContent = p.factorsTitle;
+  document.getElementById('lossTitle').textContent = p.lossTitle;
+  document.getElementById('catTitle').textContent = p.catTitle;
+  document.getElementById('boardTitle').textContent = p.boardTitle;
+  document.getElementById('shiftTitle').textContent = p.shiftTitle;
+  // bodies
+  millBoard(p.mills);
+  factorBoard(p.factors);
+  barList('losses', p.losses);
+  document.getElementById('lossNote').innerHTML = p.lossNote;
+  barList('cats', p.cats);
+  document.getElementById('catNote').innerHTML = p.catNote;
+  boardTable(p.board);
+  document.getElementById('boardNote').innerHTML = p.boardNote;
+  shiftBoard(p.shifts);
+  document.getElementById('quant').innerHTML = p.quant;
+  document.getElementById('oppTitle').textContent = 'Opportunity Loss — downtime (NPT) time ('+(key==='day'?'12-Oct-2026':'Oct 2026 MTD')+')';
+  oppCard(p.opp);
+}
+function trend(){
+  const W=980,H=230,padL=44,padR=44,padT=16,padB=34;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const n=TREND.out.length, bw=iw/n*0.5;
+  const maxOut=25000, maxOEE=100;
+  const x=i=>padL + iw*(i+0.5)/n;
+  const yO=v=>padT + ih*(1-v/maxOut);
+  const yE=v=>padT + ih*(1-v/maxOEE);
+  let bars='', xt='';
+  for(let i=0;i<n;i++){
+    const bx=x(i)-bw/2, by=yO(TREND.out[i]), bh=padT+ih-by;
+    bars+=`<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="#8fd0c9" rx="2"/>`;
+    xt+=`<text x="${x(i).toFixed(1)}" y="${H-12}" font-size="9.5" fill="#5d6b69" text-anchor="middle">${TREND.labels[i]}</text>`;
+  }
+  const pts=TREND.oee.map((v,i)=>[x(i),yE(v)]);
+  const line=`<polyline fill="none" stroke="#0f5c56" stroke-width="2.4" points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/>`;
+  const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="#0f5c56"/>`).join('');
+  const yT=yE(TARGET);
+  const tgt=`<line x1="${padL}" y1="${yT.toFixed(1)}" x2="${W-padR}" y2="${yT.toFixed(1)}" stroke="#c62828" stroke-dasharray="5 4" stroke-width="1.3"/>
+    <text x="${W-padR-2}" y="${(yT-4).toFixed(1)}" font-size="10" fill="#c62828" text-anchor="end">OEE target 75%</text>`;
+  let grid='';
+  for(let g=0; g<=100; g+=25){ const y=yE(g); grid+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#eef2f1"/><text x="${padL-6}" y="${y+3}" font-size="9" fill="#93a2a0" text-anchor="end">${g}%</text>`; }
+  document.getElementById('trend').innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${grid}${tgt}${bars}${line}${dots}${xt}
+     <text x="${padL}" y="10" font-size="10" fill="#8fd0c9">■ Production (KG)</text>
+     <text x="${padL+120}" y="10" font-size="10" fill="#0f5c56">▬ OEE %</text></svg>`;
+}
+trend();
+renderPeriod('day');
+</script>
+</body>
+</html>
