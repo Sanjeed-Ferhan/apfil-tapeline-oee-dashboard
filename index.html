@@ -86,7 +86,7 @@
   </header>
 
   <div class="ribbon">
-    <span><b>Reporting</b> 12-Oct-2026 (last day) &amp; 01–12 Oct 2026 (MTD)</span>
+    <span id="ribbonReporting"><b>Reporting</b> 12-Oct-2026 (last day) &amp; 01–12 Oct 2026 (MTD)</span>
     <span><b>Scope</b> Unit-1 &amp; Unit-2 Tapeline · Shifts A–C</span>
     <span><b>Targets</b> A 90% · P 86% · Q 97% · OEE 75% (management target)</span>
     <span><b>Source</b> Production Report + Tapeline Breakdown</span>
@@ -698,7 +698,7 @@ function buildDashboard(prTexts, bdTexts, cfg){
     var a=aggSet(set,cfg); var oo=a.out; if(cfg.cardMetric==="crush"){ oo=0; set.forEach(function(x){oo+=x.crush;}); }
     outs.push(r0(oo)); oees.push(r1(a.OEE*100));
   }
-  return { day:day, mtd:mtd, trend:{labels:labels,out:outs,oee:oees}, lastDay:lastDay };
+  return { day:day, mtd:mtd, trend:{labels:labels,out:outs,oee:oees}, lastDay:lastDay, lastLabel:fmtD(lastDay), lastUpper:fmtDU(lastDay), monthLabel:MON[lastDay.getMonth()]+" "+lastDay.getFullYear(), mtdRange:"01\u2013"+pad2(lastDay.getDate())+" "+MON[lastDay.getMonth()]+" "+lastDay.getFullYear() };
 }
 
 if(typeof window!=="undefined"){ window.buildDashboard=buildDashboard; }
@@ -719,6 +719,9 @@ if(typeof module!=="undefined" && module.exports){ module.exports={buildDashboar
     DATA={day:built.day, mtd:built.mtd}; TREND=built.trend;
     trend(); renderPeriod("day");
     var hh=document.getElementById("basisHint"); if(hh) hh.textContent = DATA.day.basis + "  \u00b7  live @ " + new Date().toLocaleString();
+    var bd=document.getElementById("btnDay"); if(bd) bd.textContent="Last day \u00b7 "+built.lastLabel;
+    var bm=document.getElementById("btnMtd"); if(bm) bm.textContent="Month to date \u00b7 "+built.monthLabel;
+    var rr=document.getElementById("ribbonReporting"); if(rr) rr.innerHTML="<b>Reporting</b> "+built.lastUpper+" (last day) &amp; "+built.mtdRange+" (MTD)";
   }).catch(function(e){ if(hint) hint.textContent="Live data unavailable — showing last snapshot ("+e.message+")"; });
 })();
 </script>
