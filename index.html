@@ -573,9 +573,11 @@ function buildDashboard(prTexts, bdTexts, cfg){
     }
   }
   if(!recs.length) return null;
+  var _n=new Date(); var todayStart=new Date(_n.getFullYear(),_n.getMonth(),_n.getDate());
   var lastDay=null;
-  for(var k=0;k<recs.length;k++){ if((recs[k].out>0) && (!lastDay || recs[k].d>lastDay)) lastDay=recs[k].d; }
-  if(!lastDay){ lastDay=recs[0].d; for(var k2=1;k2<recs.length;k2++){ if(recs[k2].d>lastDay) lastDay=recs[k2].d; } }
+  for(var k=0;k<recs.length;k++){ if(recs[k].out>0 && recs[k].d<todayStart && (!lastDay || recs[k].d>lastDay)) lastDay=recs[k].d; }
+  if(!lastDay){ for(var k3=0;k3<recs.length;k3++){ if(recs[k3].out>0 && (!lastDay || recs[k3].d>lastDay)) lastDay=recs[k3].d; } }
+  if(!lastDay){ lastDay=recs[0].d; for(var k4=1;k4<recs.length;k4++){ if(recs[k4].d>lastDay) lastDay=recs[k4].d; } }
   var monthStart=new Date(lastDay.getFullYear(), lastDay.getMonth(), 1);
   var isDay=function(r){return key(r.d)===key(lastDay);};
   var isMtd=function(r){return r.d>=monthStart && r.d<=lastDay;};
