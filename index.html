@@ -715,6 +715,7 @@ if(typeof module!=="undefined" && module.exports){ module.exports={buildDashboar
     if(!built) throw new Error("no data");
     DATA={day:built.day, mtd:built.mtd}; TREND=built.trend;
     trend(); renderPeriod("day");
+    var hh=document.getElementById("basisHint"); if(hh) hh.textContent = DATA.day.basis + "  \u00b7  live @ " + new Date().toLocaleString();
   }).catch(function(e){ if(hint) hint.textContent="Live data unavailable — showing last snapshot ("+e.message+")"; });
 })();
 </script>
